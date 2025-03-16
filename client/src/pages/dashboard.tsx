@@ -7,7 +7,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from "recharts";
 import { HttpLog } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, LogOut } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function Dashboard() {
   const { logoutMutation } = useAuth();
@@ -18,6 +18,41 @@ export default function Dashboard() {
   const [endDate, setEndDate] = useState(
     new Date().toISOString().split("T")[0]
   );
+  const [realtimeLogs, setRealtimeLogs] = useState<HttpLog[]>([]);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    // Setup WebSocket connection
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    wsRef.current = new WebSocket(wsUrl);
+
+    wsRef.current.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      if (message.type === 'initial') {
+        setRealtimeLogs(message.data);
+      } else if (message.type === 'update') {
+        setRealtimeLogs(prev => {
+          const newLogs = [message.data, ...prev];
+          return newLogs.slice(0, 100); // Keep only last 100 logs
+        });
+      }
+    };
+
+    wsRef.current.onclose = () => {
+      toast({
+        title: "WebSocket disconnected",
+        description: "Real-time updates paused. Please refresh the page.",
+        variant: "destructive",
+      });
+    };
+
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [toast]);
 
   const { data: logs, isLoading } = useQuery<HttpLog[]>({
     queryKey: ["/api/logs", startDate, endDate],
@@ -38,7 +73,9 @@ export default function Dashboard() {
     );
   }
 
-  const groupedLogs = logs?.reduce((acc, log) => {
+  const displayLogs = realtimeLogs.length > 0 ? realtimeLogs : (logs || []);
+
+  const groupedLogs = displayLogs.reduce((acc, log) => {
     const firstDigit = Math.floor(log.statusCode / 100);
     const key = `${firstDigit}xx`;
     acc[key] = (acc[key] || 0) + 1;
@@ -52,8 +89,8 @@ export default function Dashboard() {
 
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
 
-  const recentAlerts = logs
-    ?.filter((log) => log.statusCode >= 400)
+  const recentAlerts = displayLogs
+    .filter((log) => log.statusCode >= 400)
     .slice(0, 10)
     .sort((a, b) => b.statusCode - a.statusCode);
 
@@ -96,7 +133,7 @@ export default function Dashboard() {
         <div className="grid md:grid-cols-2 gap-8">
           <Card>
             <CardHeader>
-              <CardTitle>Status Code Distribution</CardTitle>
+              <CardTitle>Status Code Distribution (Real-time)</CardTitle>
             </CardHeader>
             <CardContent className="h-[400px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -125,7 +162,7 @@ export default function Dashboard() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Recent Alerts</CardTitle>
+              <CardTitle>Recent Alerts (Real-time)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">

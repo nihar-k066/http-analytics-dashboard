@@ -11,6 +11,7 @@ export interface IStorage {
   getHttpLogs(startDate: Date, endDate: Date): Promise<HttpLog[]>;
   addHttpLog(log: InsertHttpLog): Promise<HttpLog>;
   sessionStore: session.SessionStore;
+  onNewLog?: (log: HttpLog) => void;
 }
 
 export class MemStorage implements IStorage {
@@ -19,6 +20,7 @@ export class MemStorage implements IStorage {
   currentId: number;
   currentLogId: number;
   sessionStore: session.SessionStore;
+  onNewLog?: (log: HttpLog) => void;
 
   constructor() {
     this.users = new Map();
@@ -31,6 +33,20 @@ export class MemStorage implements IStorage {
 
     // Add some sample HTTP logs
     this.addSampleLogs();
+
+    // Simulate real-time logs every few seconds
+    setInterval(() => {
+      const statusCodes = [200, 201, 400, 401, 403, 404, 500, 502, 503];
+      const messages = [
+        "OK", "Created", "Bad Request", "Unauthorized", "Forbidden",
+        "Not Found", "Internal Server Error", "Bad Gateway", "Service Unavailable"
+      ];
+      const randomIndex = Math.floor(Math.random() * statusCodes.length);
+      this.addHttpLog({
+        statusCode: statusCodes[randomIndex],
+        message: messages[randomIndex],
+      });
+    }, 5000); // Add new log every 5 seconds
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -64,6 +80,12 @@ export class MemStorage implements IStorage {
       timestamp: new Date()
     };
     this.httpLogs.set(id, httpLog);
+
+    // Notify listeners about the new log
+    if (this.onNewLog) {
+      this.onNewLog(httpLog);
+    }
+
     return httpLog;
   }
 
