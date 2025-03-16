@@ -6,6 +6,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import dotenv from "dotenv";
 
 declare global {
   namespace Express {
@@ -27,13 +28,15 @@ async function comparePasswords(supplied: string, stored: string) {
   const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
+dotenv.config();
 
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET!,
+    secret: process.env.SESSION_SECRET || "sjd83JS98sdjasd",
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
+    cookie: { secure: true }
   };
 
   app.set("trust proxy", 1);
