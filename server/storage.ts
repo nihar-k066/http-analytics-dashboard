@@ -1,5 +1,5 @@
 import { users, type User, type InsertUser, type HttpLog, type InsertHttpLog } from "@shared/schema";
-import session from "express-session";
+import session, { Store } from "express-session";
 import createMemoryStore from "memorystore";
 
 const MemoryStore = createMemoryStore(session);
@@ -10,7 +10,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   getHttpLogs(startDate: Date, endDate: Date): Promise<HttpLog[]>;
   addHttpLog(log: InsertHttpLog): Promise<HttpLog>;
-  sessionStore: session.SessionStore;
+  sessionStore: Store;
   onNewLog?: (log: HttpLog) => void;
 }
 
@@ -19,7 +19,7 @@ export class MemStorage implements IStorage {
   private httpLogs: Map<number, HttpLog>;
   currentId: number;
   currentLogId: number;
-  sessionStore: session.SessionStore;
+  sessionStore: Store;
   onNewLog?: (log: HttpLog) => void;
 
   constructor() {
