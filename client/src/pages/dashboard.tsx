@@ -1,5 +1,4 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,47 +6,12 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recha
 import { HttpLog } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, LogOut, ArrowRight } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
+import { useWebSocket } from "@/hooks/use-websocket";
 
 export default function Dashboard() {
   const { logoutMutation } = useAuth();
-  const { toast } = useToast();
-  const [realtimeLogs, setRealtimeLogs] = useState<HttpLog[]>([]);
-  const wsRef = useRef<WebSocket | null>(null);
-
-  useEffect(() => {
-    // Setup WebSocket connection
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    wsRef.current = new WebSocket(wsUrl);
-
-    wsRef.current.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === 'initial') {
-        setRealtimeLogs(message.data);
-      } else if (message.type === 'update') {
-        setRealtimeLogs(prev => {
-          const newLogs = [message.data, ...prev];
-          return newLogs.slice(0, 100); // Keep only last 100 logs
-        });
-      }
-    };
-
-    wsRef.current.onclose = () => {
-      toast({
-        title: "WebSocket disconnected",
-        description: "Real-time updates paused. Please refresh the page.",
-        variant: "destructive",
-      });
-    };
-
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-    };
-  }, [toast]);
+  const { logs: realtimeLogs } = useWebSocket();
 
   // Calculate metrics
   const displayLogs = realtimeLogs || [];

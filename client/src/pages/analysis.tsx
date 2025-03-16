@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,51 +7,16 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recha
 import { HttpLog } from "@shared/schema";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
-import { useToast } from "@/hooks/use-toast";
+import { useWebSocket } from "@/hooks/use-websocket";
 
 export default function Analysis() {
-  const { toast } = useToast();
   const [startDate, setStartDate] = useState(
     new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
   );
   const [endDate, setEndDate] = useState(
     new Date().toISOString().split("T")[0]
   );
-  const [realtimeLogs, setRealtimeLogs] = useState<HttpLog[]>([]);
-  const wsRef = useRef<WebSocket | null>(null);
-
-  // WebSocket connection for real-time updates
-  useEffect(() => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    wsRef.current = new WebSocket(wsUrl);
-
-    wsRef.current.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === 'initial') {
-        setRealtimeLogs(message.data);
-      } else if (message.type === 'update') {
-        setRealtimeLogs(prev => {
-          const newLogs = [message.data, ...prev];
-          return newLogs.slice(0, 100); // Keep only last 100 logs
-        });
-      }
-    };
-
-    wsRef.current.onclose = () => {
-      toast({
-        title: "WebSocket disconnected",
-        description: "Real-time updates paused. Please refresh the page.",
-        variant: "destructive",
-      });
-    };
-
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-    };
-  }, [toast]);
+  const { logs: realtimeLogs } = useWebSocket();
 
   // Fetch historical data
   const { data: historicalLogs } = useQuery<HttpLog[]>({
