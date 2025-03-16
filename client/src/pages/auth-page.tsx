@@ -21,11 +21,6 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { user, loginMutation, registerMutation } = useAuth();
 
-  if (user) {
-    setLocation("/");
-    return null;
-  }
-
   const loginForm = useForm({
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
@@ -41,6 +36,12 @@ export default function AuthPage() {
       password: "",
     },
   });
+
+  // Move navigation after all hooks are initialized
+  if (user) {
+    setLocation("/");
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-primary/10 flex items-center justify-center p-4">
