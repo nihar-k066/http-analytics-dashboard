@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { HttpLog } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, LogOut } from "lucide-react";
@@ -82,9 +82,17 @@ export default function Dashboard() {
     return acc;
   }, {} as Record<string, number>);
 
+  const statusCodeDescriptions: Record<string, string> = {
+    '2xx': 'Success Responses',
+    '3xx': 'Redirection Messages',
+    '4xx': 'Client Error Responses',
+    '5xx': 'Server Error Responses'
+  };
+
   const chartData = Object.entries(groupedLogs || {}).map(([name, value]) => ({
     name,
     value,
+    description: statusCodeDescriptions[name] || 'Other Responses'
   }));
 
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
@@ -145,7 +153,7 @@ export default function Dashboard() {
                     cx="50%"
                     cy="50%"
                     outerRadius={120}
-                    label
+                    label={({ name, value }) => `${name} (${value})`}
                   >
                     {chartData.map((entry, index) => (
                       <Cell
@@ -154,6 +162,21 @@ export default function Dashboard() {
                       />
                     ))}
                   </Pie>
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-background/95 border p-2 rounded-lg shadow-lg">
+                            <p className="font-medium">{data.name}</p>
+                            <p className="text-sm text-muted-foreground">{data.description}</p>
+                            <p className="text-sm">Count: {data.value}</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
